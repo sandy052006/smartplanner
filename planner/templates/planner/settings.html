@@ -1,0 +1,316 @@
+{% extends 'planner/base.html' %}
+{% load static %}
+
+{% block title %}Settings — SmartPlanner{% endblock %}
+
+{% block extra_css %}
+.settings-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+@media (max-width: 768px) { .settings-grid { grid-template-columns: 1fr; } }
+
+.theme-card {
+    padding: 1.5rem;
+    border: 2px solid var(--border);
+    border-radius: var(--radius);
+    cursor: pointer;
+    transition: all var(--transition);
+    text-align: center;
+    background: var(--surface-2);
+    position: relative;
+}
+.theme-card:hover { border-color: var(--primary); transform: translateY(-2px); }
+.theme-card.active { border-color: var(--primary); background: var(--primary-glow); box-shadow: 0 0 0 3px var(--primary-glow); }
+.theme-card.active::after {
+    content: '✓';
+    position: absolute;
+    top: 8px; right: 12px;
+    color: var(--primary);
+    font-weight: 800;
+    font-size: 1rem;
+}
+.theme-preview {
+    width: 100%;
+    height: 80px;
+    border-radius: var(--radius-sm);
+    margin-bottom: 0.75rem;
+    overflow: hidden;
+    border: 1px solid var(--border);
+}
+.theme-name { font-weight: 700; color: var(--text); font-size: 1rem; }
+.theme-desc { font-size: 0.8rem; color: var(--text-muted); margin-top: 0.25rem; }
+
+.color-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.75rem 1rem;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    margin-bottom: 0.6rem;
+    transition: all var(--transition);
+}
+.color-row:hover { border-color: var(--primary); }
+.color-row label { font-size: 0.9rem; font-weight: 600; color: var(--text); }
+.color-input { width: 50px; height: 36px; border-radius: var(--radius-sm); border: 2px solid var(--border); cursor: pointer; overflow: hidden; padding: 2px; }
+
+.lang-option {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.85rem 1rem;
+    background: var(--surface-2);
+    border: 2px solid var(--border);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: all var(--transition);
+}
+.lang-option:hover { border-color: var(--primary); background: var(--primary-glow); }
+.lang-option.selected { border-color: var(--primary); background: var(--primary-glow); }
+.lang-name { font-weight: 700; color: var(--text); font-size: 0.95rem; }
+.lang-native { font-size: 0.8rem; color: var(--text-muted); }
+{% endblock %}
+
+{% block content %}
+<div style="max-width:900px; margin:0 auto;">
+
+    <!-- Header -->
+    <div style="margin-bottom:2rem;">
+        <h1 class="section-heading" style="font-size:1.8rem; margin-bottom:0.5rem;">
+            ⚙️ <span data-i18n="settings">Settings</span>
+        </h1>
+        <p style="color:var(--text-muted); font-size:0.95rem;">Customize your SmartPlanner experience — theme, language, and more.</p>
+    </div>
+
+    <form method="post" id="settings-form">
+        {% csrf_token %}
+
+        <!-- ═══ THEME SECTION ═══ -->
+        <div class="card" style="margin-bottom:1.5rem;">
+            <div class="card-header">
+                <h2 class="card-title">🎨 <span data-i18n="themeSettings">Theme Settings</span></h2>
+            </div>
+            <div class="card-body">
+
+                <!-- Theme Selector -->
+                <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:1rem; margin-bottom:1.5rem;">
+
+                    <!-- Light Theme -->
+                    <div class="theme-card {% if profile.theme == 'light' %}active{% endif %}" id="theme-card-light" onclick="selectTheme('light')">
+                        <div class="theme-preview" style="background:#f0f4ff;">
+                            <div style="height:16px; background:#6366f1; margin-bottom:6px;"></div>
+                            <div style="padding:0 8px;">
+                                <div style="height:8px; background:#e2e8f0; border-radius:4px; margin-bottom:4px; width:80%;"></div>
+                                <div style="height:6px; background:#e2e8f0; border-radius:4px; width:60%;"></div>
+                                <div style="display:flex; gap:4px; margin-top:8px;">
+                                    <div style="height:20px; flex:1; background:#10b981; border-radius:4px; opacity:0.7;"></div>
+                                    <div style="height:20px; flex:1; background:#f59e0b; border-radius:4px; opacity:0.7;"></div>
+                                    <div style="height:20px; flex:1; background:#6366f1; border-radius:4px; opacity:0.7;"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="theme-name" data-i18n="lightTheme">Light</div>
+                        <div class="theme-desc">Clean, bright & professional</div>
+                        <input type="radio" name="theme" value="light" {% if profile.theme == 'light' %}checked{% endif %} style="display:none;" id="radio-light">
+                    </div>
+
+                    <!-- Dark Theme -->
+                    <div class="theme-card {% if profile.theme == 'dark' %}active{% endif %}" id="theme-card-dark" onclick="selectTheme('dark')">
+                        <div class="theme-preview" style="background:#0d1117;">
+                            <div style="height:16px; background:#6366f1; margin-bottom:6px;"></div>
+                            <div style="padding:0 8px;">
+                                <div style="height:8px; background:#21262d; border-radius:4px; margin-bottom:4px; width:80%;"></div>
+                                <div style="height:6px; background:#21262d; border-radius:4px; width:60%;"></div>
+                                <div style="display:flex; gap:4px; margin-top:8px;">
+                                    <div style="height:20px; flex:1; background:#10b981; border-radius:4px; opacity:0.7;"></div>
+                                    <div style="height:20px; flex:1; background:#f59e0b; border-radius:4px; opacity:0.7;"></div>
+                                    <div style="height:20px; flex:1; background:#6366f1; border-radius:4px; opacity:0.7;"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="theme-name" data-i18n="darkTheme">Dark</div>
+                        <div class="theme-desc">Easy on the eyes, great at night</div>
+                        <input type="radio" name="theme" value="dark" {% if profile.theme == 'dark' %}checked{% endif %} style="display:none;" id="radio-dark">
+                    </div>
+
+                    <!-- Custom Theme -->
+                    <div class="theme-card {% if profile.theme == 'custom' %}active{% endif %}" id="theme-card-custom" onclick="selectTheme('custom')">
+                        <div class="theme-preview" id="custom-preview" style="background:{{ profile.custom_bg }};">
+                            <div style="height:16px; background:{{ profile.custom_primary }}; margin-bottom:6px;"></div>
+                            <div style="padding:0 8px;">
+                                <div style="height:8px; background:{{ profile.custom_surface }}; border-radius:4px; margin-bottom:4px; width:80%;"></div>
+                                <div style="height:6px; background:{{ profile.custom_surface }}; border-radius:4px; width:60%;"></div>
+                                <div style="display:flex; gap:4px; margin-top:8px;">
+                                    <div style="height:20px; flex:1; background:{{ profile.custom_accent }}; border-radius:4px; opacity:0.8;"></div>
+                                    <div style="height:20px; flex:1; background:{{ profile.custom_primary }}; border-radius:4px; opacity:0.6;"></div>
+                                    <div style="height:20px; flex:1; background:{{ profile.custom_accent }}; border-radius:4px; opacity:0.4;"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="theme-name" data-i18n="customTheme">Custom</div>
+                        <div class="theme-desc">Your colors, your vibe</div>
+                        <input type="radio" name="theme" value="custom" {% if profile.theme == 'custom' %}checked{% endif %} style="display:none;" id="radio-custom">
+                    </div>
+                </div>
+
+                <!-- Custom Color Pickers -->
+                <div id="custom-colors-panel" style="{% if profile.theme != 'custom' %}display:none;{% endif %}">
+                    <div class="divider"></div>
+                    <h3 style="font-size:0.9rem; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px; margin:1rem 0 0.75rem;" data-i18n="accentColor">Customize Colors</h3>
+
+                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.5rem;">
+                        <div class="color-row">
+                            <label for="color-primary" data-i18n="primaryColor">Primary Color</label>
+                            <input type="color" name="custom_primary" id="color-primary"
+                                   class="color-input color-picker" data-color-var="primary"
+                                   value="{{ profile.custom_primary }}">
+                        </div>
+                        <div class="color-row">
+                            <label for="color-accent" data-i18n="accentColor">Accent Color</label>
+                            <input type="color" name="custom_accent" id="color-accent"
+                                   class="color-input color-picker" data-color-var="accent"
+                                   value="{{ profile.custom_accent }}">
+                        </div>
+                        <div class="color-row">
+                            <label for="color-bg" data-i18n="backgroundColor">Background</label>
+                            <input type="color" name="custom_bg" id="color-bg"
+                                   class="color-input color-picker" data-color-var="bg"
+                                   value="{{ profile.custom_bg }}">
+                        </div>
+                        <div class="color-row">
+                            <label for="color-surface" data-i18n="surfaceColor">Surface/Card</label>
+                            <input type="color" name="custom_surface" id="color-surface"
+                                   class="color-input color-picker" data-color-var="surface"
+                                   value="{{ profile.custom_surface }}">
+                        </div>
+                        <div class="color-row">
+                            <label for="color-text" data-i18n="textColor">Text Color</label>
+                            <input type="color" name="custom_text" id="color-text"
+                                   class="color-input color-picker" data-color-var="text"
+                                   value="{{ profile.custom_text }}">
+                        </div>
+                    </div>
+                    <p style="font-size:0.78rem; color:var(--text-light); margin-top:0.75rem;">
+                        💡 Changes preview instantly. Save to persist across sessions.
+                    </p>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- ═══ LANGUAGE SECTION ═══ -->
+        <div class="card" style="margin-bottom:1.5rem;">
+            <div class="card-header">
+                <h2 class="card-title">🌐 <span data-i18n="language">Language</span></h2>
+                <span class="badge badge-primary">{{ profile.get_language_display }}</span>
+            </div>
+            <div class="card-body">
+                <p style="font-size:0.9rem; color:var(--text-muted); margin-bottom:1rem;">
+                    Select your preferred display language. The UI will instantly switch.
+                </p>
+                <div style="max-height:400px; overflow-y:auto; padding-right:4px;">
+
+                    <h4 style="font-size:0.75rem; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:1px; margin-bottom:0.75rem;">🇮🇳 Indian Languages</h4>
+                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.5rem; margin-bottom:1.25rem;">
+                        {% for code, name in form.language.field.choices %}
+                            {% if code in 'en,hi,bn,te,mr,ta,gu,kn,ml,pa,or' %}
+                            <label class="lang-option {% if profile.language == code %}selected{% endif %}" for="lang_{{ code }}" onclick="selectLang('{{ code }}')">
+                                <input type="radio" name="language" value="{{ code }}" id="lang_{{ code }}"
+                                       {% if profile.language == code %}checked{% endif %} style="display:none;">
+                                <div>
+                                    <div class="lang-name">{{ name }}</div>
+                                </div>
+                            </label>
+                            {% endif %}
+                        {% endfor %}
+                    </div>
+
+                    <h4 style="font-size:0.75rem; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:1px; margin-bottom:0.75rem;">🌍 International Languages</h4>
+                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.5rem;">
+                        {% for code, name in form.language.field.choices %}
+                            {% if code not in 'en,hi,bn,te,mr,ta,gu,kn,ml,pa,or' %}
+                            <label class="lang-option {% if profile.language == code %}selected{% endif %}" for="lang_{{ code }}" onclick="selectLang('{{ code }}')">
+                                <input type="radio" name="language" value="{{ code }}" id="lang_{{ code }}"
+                                       {% if profile.language == code %}checked{% endif %} style="display:none;">
+                                <div>
+                                    <div class="lang-name">{{ name }}</div>
+                                </div>
+                            </label>
+                            {% endif %}
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Save Button -->
+        <div style="display:flex; justify-content:flex-end; gap:1rem; margin-top:1rem;">
+            <a href="{% url 'planner:dashboard' %}" class="btn btn-ghost" data-i18n="cancel">Cancel</a>
+            <button type="submit" class="btn btn-primary" data-i18n="saveSettings">
+                💾 Save Settings
+            </button>
+        </div>
+
+    </form>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function selectTheme(theme) {
+    // Update radio buttons
+    document.querySelectorAll('input[name="theme"]').forEach(r => r.checked = (r.value === theme));
+    // Update card active states
+    document.querySelectorAll('.theme-card').forEach(c => c.classList.remove('active'));
+    document.getElementById('theme-card-' + theme).classList.add('active');
+    // Show/hide custom colors
+    document.getElementById('custom-colors-panel').style.display = (theme === 'custom') ? 'block' : 'none';
+    // Apply theme live
+    localStorage.setItem('sp_theme', theme);
+    applyTheme(theme, {
+        primary: document.getElementById('color-primary')?.value || '#6366f1',
+        bg: document.getElementById('color-bg')?.value || '#0f172a',
+        surface: document.getElementById('color-surface')?.value || '#1e293b',
+        text: document.getElementById('color-text')?.value || '#f8fafc',
+        accent: document.getElementById('color-accent')?.value || '#10b981',
+    });
+}
+
+function selectLang(code) {
+    document.querySelectorAll('input[name="language"]').forEach(r => r.checked = (r.value === code));
+    document.querySelectorAll('.lang-option').forEach(el => el.classList.remove('selected'));
+    const label = document.querySelector(`label[for="lang_${code}"]`);
+    if (label) label.classList.add('selected');
+    // Apply live
+    localStorage.setItem('sp_lang', code);
+    document.documentElement.setAttribute('data-lang', code);
+    applyTranslations();
+    // Update nav lang selector
+    const ls = document.getElementById('lang-switcher');
+    if (ls) ls.value = code;
+}
+
+// Live color picker updates for custom preview
+document.querySelectorAll('.color-picker').forEach(picker => {
+    picker.addEventListener('input', (e) => {
+        const prop = e.target.getAttribute('data-color-var');
+        if (prop) {
+            localStorage.setItem(`sp_color_${prop}`, e.target.value);
+            document.documentElement.style.setProperty(`--${prop}`, e.target.value);
+        }
+        // Update mini preview
+        updateCustomPreview();
+    });
+});
+
+function updateCustomPreview() {
+    const preview = document.getElementById('custom-preview');
+    if (!preview) return;
+    const bg = document.getElementById('color-bg')?.value || '#0f172a';
+    const primary = document.getElementById('color-primary')?.value || '#6366f1';
+    const surface = document.getElementById('color-surface')?.value || '#1e293b';
+    const accent = document.getElementById('color-accent')?.value || '#10b981';
+    preview.style.background = bg;
+    preview.querySelector('div:first-child').style.background = primary;
+}
+</script>
+{% endblock %}

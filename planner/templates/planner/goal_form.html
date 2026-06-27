@@ -1,0 +1,100 @@
+{% extends 'planner/base.html' %}
+
+{% block title %}{% if edit_mode %}Edit Goal{% else %}Create Goal{% endif %} — SmartPlanner{% endblock %}
+
+{% block extra_css %}
+.goal-form-wrap { max-width: 560px; margin: 0 auto; }
+{% endblock %}
+
+{% block content %}
+<div class="goal-form-wrap">
+    <div style="margin-bottom:2rem; text-align:center;">
+        <div style="font-size:3rem; margin-bottom:0.5rem;">{% if edit_mode %}✏️{% else %}🎯{% endif %}</div>
+        <h1 style="font-size:1.6rem; font-weight:800; color:var(--text); margin-bottom:0.25rem;">
+            {% if edit_mode %}<span data-i18n="updateGoal">Edit Your Goal</span>{% else %}<span data-i18n="createGoal">Create a New Goal</span>{% endif %}
+        </h1>
+        <p style="color:var(--text-muted); font-size:0.9rem;">Set a clear target and let SmartPlanner track your progress.</p>
+    </div>
+
+    <div class="card">
+        <div class="card-body">
+
+            {% if form.errors %}
+            <div style="background:rgba(239,68,68,0.08); border:1px solid rgba(239,68,68,0.2); border-radius:var(--radius-sm); padding:0.875rem; margin-bottom:1rem; font-size:0.875rem; color:#ef4444;">
+                <strong>⚠️ Please fix the errors below:</strong>
+                <ul style="margin-top:0.5rem; padding-left:1rem;">
+                {% for field, errors in form.errors.items %}
+                    {% for error in errors %}
+                    <li>{{ field|title }}: {{ error }}</li>
+                    {% endfor %}
+                {% endfor %}
+                </ul>
+            </div>
+            {% endif %}
+
+            <form method="post">
+                {% csrf_token %}
+
+                <!-- Goal Title -->
+                <div class="form-group">
+                    <label class="form-label" for="{{ form.title.id_for_label }}" data-i18n="goalTitle">Goal Title</label>
+                    <input type="text" name="{{ form.title.name }}" id="{{ form.title.id_for_label }}"
+                           class="form-input"
+                           value="{{ form.title.value|default_if_none:'' }}"
+                           placeholder="e.g. Emergency Fund, New Laptop, Vacation to Goa..."
+                           required>
+                    {% if form.title.errors %}<p style="color:#ef4444;font-size:0.8rem;margin-top:0.3rem;">{{ form.title.errors.as_text }}</p>{% endif %}
+                </div>
+
+                <!-- Target Amount -->
+                <div class="form-group">
+                    <label class="form-label" for="{{ form.target_amount.id_for_label }}" data-i18n="targetAmount">Target Amount (₹)</label>
+                    <input type="number" name="{{ form.target_amount.name }}" id="{{ form.target_amount.id_for_label }}"
+                           class="form-input"
+                           value="{{ form.target_amount.value|default_if_none:'' }}"
+                           placeholder="e.g. 100000" min="1" step="1" required>
+                    {% if form.target_amount.errors %}<p style="color:#ef4444;font-size:0.8rem;margin-top:0.3rem;">{{ form.target_amount.errors.as_text }}</p>{% endif %}
+                </div>
+
+                <!-- Currently Saved (only on create) -->
+                {% if not edit_mode %}
+                <div class="form-group">
+                    <label class="form-label" for="{{ form.current_amount.id_for_label }}" data-i18n="currentlySaved">Amount Already Saved (₹)</label>
+                    <input type="number" name="{{ form.current_amount.name }}" id="{{ form.current_amount.id_for_label }}"
+                           class="form-input"
+                           value="{{ form.current_amount.value|default_if_none:'0' }}"
+                           placeholder="0" min="0" step="1">
+                    {% if form.current_amount.errors %}<p style="color:#ef4444;font-size:0.8rem;margin-top:0.3rem;">{{ form.current_amount.errors.as_text }}</p>{% endif %}
+                </div>
+                {% endif %}
+
+                <!-- Target Date: use goal_date_str (ISO YYYY-MM-DD) when editing -->
+                <div class="form-group">
+                    <label class="form-label" for="{{ form.target_date.id_for_label }}" data-i18n="targetDate">Target Date</label>
+                    <input type="date" name="{{ form.target_date.name }}" id="{{ form.target_date.id_for_label }}"
+                           class="form-input"
+                           value="{% if goal_date_str %}{{ goal_date_str }}{% else %}{{ form.target_date.value|default_if_none:'' }}{% endif %}"
+                           required>
+                    <p style="font-size:0.78rem; color:var(--text-muted); margin-top:0.3rem;">
+                        SmartPlanner will calculate your monthly savings requirement automatically.
+                    </p>
+                    {% if form.target_date.errors %}<p style="color:#ef4444;font-size:0.8rem;margin-top:0.3rem;">{{ form.target_date.errors.as_text }}</p>{% endif %}
+                </div>
+
+                <div class="divider"></div>
+
+                <div style="display:flex; gap:1rem; justify-content:flex-end;">
+                    <a href="{% url 'planner:dashboard' %}" class="btn btn-ghost" data-i18n="cancel">← Cancel</a>
+                    <button type="submit" class="btn btn-accent">
+                        {% if edit_mode %}
+                            💾 <span data-i18n="saveChanges">Save Changes</span>
+                        {% else %}
+                            🎯 <span data-i18n="createGoal">Add Goal</span>
+                        {% endif %}
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

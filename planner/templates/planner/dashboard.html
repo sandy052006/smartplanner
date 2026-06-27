@@ -1,0 +1,951 @@
+{% extends 'planner/base.html' %}
+{% load static %}
+
+{% block title %}Dashboard — SmartPlanner{% endblock %}
+
+{% block extra_css %}
+.dashboard-grid {
+    display: grid;
+    grid-template-columns: 1fr 400px;
+    gap: 1.5rem;
+    align-items: start;
+}
+.left-col { display: flex; flex-direction: column; gap: 1.5rem; }
+.right-col { display: flex; flex-direction: column; gap: 1.5rem; }
+
+@media (max-width: 1100px) {
+    .dashboard-grid { grid-template-columns: 1fr; }
+}
+
+/* ── City Banner ───────────────────────────────── */
+.city-card { position: relative; overflow: hidden; }
+.city-img {
+    width: 100%; height: 230px; object-fit: cover; display: block;
+    filter: brightness(0.82); transition: filter 0.4s ease;
+}
+.city-img:hover { filter: brightness(0.95); }
+.city-img-overlay {
+    position: absolute; bottom: 0; left: 0; right: 0;
+    background: linear-gradient(to top, rgba(0,0,0,0.75) 0%, transparent 100%);
+    padding: 1.5rem 1.75rem;
+}
+.city-name-big {
+    font-size: 1.75rem; font-weight: 800; color: white;
+    text-shadow: 0 2px 12px rgba(0,0,0,0.6); margin-bottom: 0.3rem;
+}
+.city-meta { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; }
+
+/* ── Weather ────────────────────────────────────── */
+.weather-grid { display: grid; grid-template-columns: auto 1fr; gap: 1.5rem; align-items: center; }
+.weather-left { text-align: center; }
+.weather-temp-big { font-size: 3.8rem; font-weight: 800; color: var(--text); line-height: 1; }
+.weather-emoji-big { font-size: 2.8rem; }
+.weather-desc-big { font-size: 0.88rem; color: var(--text-muted); margin-top: 0.25rem; text-transform: capitalize; }
+.weather-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
+.weather-stat {
+    background: var(--surface-2); border-radius: var(--radius-sm);
+    padding: 0.65rem 0.9rem; border: 1px solid var(--border);
+    transition: transform 0.2s;
+}
+.weather-stat:hover { transform: translateY(-2px); }
+.weather-stat-value { font-size: 1rem; font-weight: 700; color: var(--text); }
+.weather-stat-label { font-size: 0.68rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.6px; margin-top: 1px; }
+
+/* ── Budget Doughnut ────────────────────────────── */
+.budget-layout { display: grid; grid-template-columns: 200px 1fr; gap: 2rem; align-items: center; }
+@media (max-width: 640px) { .budget-layout { grid-template-columns: 1fr; } }
+.chart-wrap { position: relative; width: 200px; height: 200px; flex-shrink: 0; }
+
+/* ── Allocation Cards ───────────────────────────── */
+.alloc-card {
+    border-radius: var(--radius-sm); padding: 1rem 1.25rem;
+    border: 1px solid var(--border); display: flex;
+    align-items: center; justify-content: space-between;
+    transition: all var(--transition); position: relative; overflow: hidden;
+}
+.alloc-card::before {
+    content: ''; position: absolute; left: 0; top: 0; bottom: 0;
+    width: 3px; border-radius: 0 2px 2px 0;
+}
+.alloc-card:hover { transform: translateY(-2px); box-shadow: var(--shadow); }
+.alloc-icon { width: 42px; height: 42px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.25rem; flex-shrink: 0; }
+.alloc-amount { font-size: 1.35rem; font-weight: 800; }
+.alloc-label { font-size: 0.72rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); }
+
+.alloc-needs { background: rgba(16,185,129,0.07); border-color: rgba(16,185,129,0.2); }
+.alloc-needs::before { background: #10b981; }
+.alloc-needs .alloc-amount { color: var(--accent); }
+.alloc-needs .alloc-icon { background: rgba(16,185,129,0.15); }
+
+.alloc-wants { background: rgba(245,158,11,0.07); border-color: rgba(245,158,11,0.2); }
+.alloc-wants::before { background: #f59e0b; }
+.alloc-wants .alloc-amount { color: #f59e0b; }
+.alloc-wants .alloc-icon { background: rgba(245,158,11,0.15); }
+
+.alloc-savings { background: rgba(99,102,241,0.07); border-color: rgba(99,102,241,0.2); }
+.alloc-savings::before { background: #6366f1; }
+.alloc-savings .alloc-amount { color: var(--primary); }
+.alloc-savings .alloc-icon { background: var(--primary-glow); }
+
+/* ── Stat Cards (Tax / Rate) ────────────────────── */
+.stat-card {
+    background: var(--surface-2); border: 1px solid var(--border);
+    border-radius: var(--radius-sm); padding: 1rem 1.1rem;
+    text-align: center; transition: all 0.25s;
+}
+.stat-card:hover { border-color: var(--primary); box-shadow: 0 0 0 2px var(--primary-glow); transform: translateY(-2px); }
+.stat-value { font-size: 1.25rem; font-weight: 800; margin-bottom: 0.2rem; }
+.stat-label { font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.4px; line-height: 1.4; }
+
+/* ── Tax Panel ──────────────────────────────────── */
+.tax-highlight {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 0.75rem 1rem; background: var(--surface-2);
+    border-radius: var(--radius-sm); border: 1px solid var(--border);
+    margin-bottom: 0.5rem; transition: border-color 0.2s;
+}
+.tax-highlight:hover { border-color: var(--primary); }
+.tax-highlight-val { font-size: 1.05rem; font-weight: 700; color: var(--primary); }
+.tax-highlight-label { font-size: 0.8rem; color: var(--text-muted); display: flex; align-items: center; gap: 0.35rem; }
+
+/* Tax table */
+.tax-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+.tax-table th {
+    text-align: left; font-size: 0.72rem; font-weight: 700; letter-spacing: 0.5px;
+    text-transform: uppercase; color: var(--text-muted);
+    padding: 0.5rem 0.75rem; border-bottom: 2px solid var(--border);
+}
+.tax-table td { padding: 0.6rem 0.75rem; border-bottom: 1px solid var(--border); vertical-align: middle; }
+.tax-table tbody tr:hover { background: var(--surface-2); }
+.tax-table tbody tr:last-child td { border-bottom: none; }
+.tax-rate-badge {
+    font-weight: 700; color: var(--primary); background: var(--primary-glow);
+    padding: 0.2rem 0.6rem; border-radius: 999px; font-size: 0.8rem;
+    display: inline-block;
+}
+
+/* Foreign Tax Panel */
+.tax-bracket-row {
+    display: flex; justify-content: space-between;
+    padding: 0.5rem 0.8rem; border-radius: var(--radius-sm);
+    margin-bottom: 0.3rem; background: var(--surface-2);
+    border: 1px solid var(--border); font-size: 0.85rem;
+}
+
+/* ── LIVE badge pulse ───────────────────────────── */
+.badge-live {
+    background: rgba(16,185,129,0.15); color: #10b981;
+    border: 1px solid rgba(16,185,129,0.35); font-size: 0.6rem;
+    font-weight: 700; letter-spacing: 0.5px; padding: 0.1rem 0.45rem;
+    border-radius: 999px; vertical-align: middle;
+    animation: live-pulse 2s infinite;
+}
+@keyframes live-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.65; }
+}
+
+/* Rate source chip */
+.rate-source-chip {
+    display: inline-flex; align-items: center; gap: 0.3rem;
+    font-size: 0.7rem; color: var(--text-muted);
+    background: var(--surface-2); border: 1px solid var(--border);
+    border-radius: 999px; padding: 0.1rem 0.55rem;
+}
+
+/* ── Goal cards ─────────────────────────────────── */
+.goal-card {
+    border: 1px solid var(--border); border-radius: var(--radius-sm);
+    padding: 1.25rem; transition: all var(--transition); background: var(--surface-2);
+    position: relative; overflow: hidden;
+}
+.goal-card::after {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+    background: linear-gradient(90deg, var(--primary), var(--accent));
+    transform: scaleX(0); transform-origin: left; transition: transform 0.3s;
+}
+.goal-card:hover::after { transform: scaleX(1); }
+.goal-card:hover { border-color: var(--primary); box-shadow: var(--shadow); }
+.goal-title { font-size: 1rem; font-weight: 700; color: var(--text); }
+.goal-achieved { background: linear-gradient(135deg, rgba(16,185,129,0.08), rgba(16,185,129,0.03)); border-color: var(--accent); }
+.goal-actions { display: flex; gap: 0.5rem; align-items: center; }
+
+/* Progress bar */
+.progress-bar-wrap { height: 8px; background: var(--surface); border-radius: 999px; overflow: hidden; }
+.progress-bar-fill {
+    height: 100%; background: linear-gradient(90deg, var(--primary), var(--accent));
+    border-radius: 999px; transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+    min-width: 4px;
+}
+
+/* ── Tips ───────────────────────────────────────── */
+.tip-item {
+    display: flex; gap: 0.75rem; align-items: flex-start;
+    padding: 0.9rem 1rem; background: var(--surface-2);
+    border-radius: var(--radius-sm); border: 1px solid var(--border);
+    transition: all var(--transition);
+}
+.tip-item:hover { border-color: var(--accent); background: rgba(16,185,129,0.04); transform: translateX(3px); }
+.tip-icon {
+    width: 32px; height: 32px; background: rgba(16,185,129,0.15);
+    border-radius: 50%; display: flex; align-items: center;
+    justify-content: center; font-size: 0.9rem; flex-shrink: 0;
+    margin-top: 1px;
+}
+
+/* ── Autocomplete ───────────────────────────────── */
+#city-suggestions {
+    position: absolute; top: 100%; left: 0; right: 0;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+    z-index: 50; max-height: 240px; overflow-y: auto; box-shadow: var(--shadow);
+}
+.city-suggestion-item {
+    padding: 0.65rem 1rem; cursor: pointer; font-size: 0.88rem; color: var(--text);
+    display: flex; justify-content: space-between; align-items: center;
+    border-bottom: 1px solid var(--border); transition: background var(--transition);
+}
+.city-suggestion-item:hover { background: var(--surface-2); }
+.city-suggestion-item:last-child { border-bottom: none; }
+
+/* ── No city state ──────────────────────────────── */
+.no-city-state { text-align: center; padding: 2.5rem 1.5rem; color: var(--text-muted); }
+.no-city-icon { font-size: 3rem; margin-bottom: 1rem; display: block; }
+
+/* ── Suggestion Pill ────────────────────────────── */
+.suggestion-pill {
+    background: var(--surface-2); border: 1px solid var(--border);
+    border-radius: var(--radius-sm); padding: 0.65rem 1rem;
+    font-size: 0.82rem; color: var(--text-muted); line-height: 1.5;
+}
+
+/* ── Section heading ────────────────────────────── */
+.section-heading { display: flex; align-items: center; gap: 0.6rem; font-size: 0.9rem; font-weight: 700; color: var(--text); }
+.section-heading .icon { width: 28px; height: 28px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 0.9rem; }
+
+/* Grid helpers */
+.grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.75rem; }
+.grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.75rem; }
+@media (max-width: 900px) { .grid-4 { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 480px) { .grid-4 { grid-template-columns: 1fr 1fr; } .grid-2 { grid-template-columns: 1fr; } }
+
+/* Category badges */
+.category-banner {
+    display: inline-flex; align-items: center; gap: 0.4rem;
+    padding: 0.2rem 0.65rem; border-radius: 999px;
+    font-size: 0.75rem; font-weight: 700; backdrop-filter: blur(4px);
+}
+.cat-x { background: rgba(239,68,68,0.2); color: #fca5a5; border: 1px solid rgba(239,68,68,0.3); }
+.cat-y { background: rgba(245,158,11,0.2); color: #fcd34d; border: 1px solid rgba(245,158,11,0.3); }
+.cat-z { background: rgba(99,102,241,0.2); color: #a5b4fc; border: 1px solid rgba(99,102,241,0.3); }
+.cat-int { background: rgba(16,185,129,0.2); color: #6ee7b7; border: 1px solid rgba(16,185,129,0.3); }
+{% endblock %}
+
+{% block content %}
+
+<!-- ═══ TOP SECTION: City Info + Weather ═══ -->
+{% if profile.city %}
+<div class="card city-card animate-fade-up" style="margin-bottom:1.5rem; animation-delay:0s;">
+    <!-- City Photo -->
+    <div style="position:relative; overflow:hidden;">
+        <img src="{{ city_image_url }}"
+             alt="{{ profile.city }} cityscape"
+             class="city-img"
+             onerror="this.style.display='none'; document.getElementById('city-banner-fallback').style.display='flex';"
+        >
+        <div id="city-banner-fallback"
+             style="display:none; height:220px; background:linear-gradient(135deg, var(--primary-dark), var(--accent-dark)); align-items:center; justify-content:center; font-size:4rem;">
+            🌆
+        </div>
+        <div class="city-img-overlay">
+            <div class="city-name-big">
+                {% if city_info %}{{ city_info.display_name }}{% else %}{{ profile.city|title }}{% endif %}
+            </div>
+            <div class="city-meta">
+                {% if city_type == 'indian' and city_info %}
+                    <div class="category-banner cat-{{ city_category|lower }}">
+                        🏙️ Class {{ city_category }} City
+                    </div>
+                    <span style="color:rgba(255,255,255,0.8); font-size:0.85rem;">{{ city_info.state }}</span>
+                {% elif city_type == 'foreign' and city_info %}
+                    <div class="category-banner cat-int">🌐 International</div>
+                    <span style="color:rgba(255,255,255,0.8); font-size:0.85rem;">{{ city_info.country }}</span>
+                {% endif %}
+                {% if weather.success %}
+                    <span style="color:rgba(255,255,255,0.85); font-size:1rem; margin-left:0.5rem;">
+                        {{ weather.emoji }} {{ weather.temp_c }}°C
+                    </span>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- City Details Row -->
+    <div class="card-body">
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:1.25rem;">
+
+            <!-- Left: City / Government Data -->
+            <div>
+                {% if city_type == 'indian' and city_info %}
+                <h3 class="section-heading" style="font-size:1rem; margin-bottom:0.75rem;">
+                    <span class="icon" style="background:rgba(239,68,68,0.1);">🏛️</span>
+                    <span data-i18n="govtData">Government Data</span>
+                </h3>
+                <div style="display:flex; flex-direction:column; gap:0.5rem;">
+                    <div class="tax-highlight">
+                        <span class="tax-highlight-label">7th CPC Category</span>
+                        <span class="badge badge-{{ city_category|lower }}">Class {{ city_category }}</span>
+                    </div>
+                    <div class="tax-highlight">
+                        <span class="tax-highlight-label">HRA Rate
+                            <span class="badge badge-primary" style="font-size:0.6rem; margin-left:0.4rem;">LIVE</span>
+                        </span>
+                        <span class="tax-highlight-val">{{ hra_percent }}% of Basic Pay</span>
+                    </div>
+                    <div class="tax-highlight">
+                        <span class="tax-highlight-label">
+                            DA Rate
+                            <span class="badge badge-success" style="font-size:0.6rem; margin-left:0.4rem;">LIVE</span>
+                        </span>
+                        <div style="text-align:right;">
+                            <div class="tax-highlight-val">{{ live_da.rate }}% of Basic Pay</div>
+                            <div style="font-size:0.7rem; color:var(--text-muted);">{{ live_da.effective_from }}</div>
+                        </div>
+                    </div>
+                    <div class="tax-highlight">
+                        <span class="tax-highlight-label" data-i18n="avgRent">Avg. 1BHK Rent</span>
+                        <span class="tax-highlight-val">₹{{ city_info.avg_rent_1bhk|floatformat:0 }}/mo</span>
+                    </div>
+                    <div class="tax-highlight">
+                        <span class="tax-highlight-label" data-i18n="avgGrocery">Avg. Grocery/Month</span>
+                        <span class="tax-highlight-val">₹{{ city_info.avg_grocery_monthly|floatformat:0 }}</span>
+                    </div>
+                    <p style="font-size:0.8rem; color:var(--text-muted); margin-top:0.25rem;">{{ city_info.description }}</p>
+                    <p style="font-size:0.72rem; color:var(--text-light); margin-top:0.25rem;">
+                        📋 HRA Source: {{ live_hra.source }}
+                    </p>
+                </div>
+
+                {% elif city_type == 'foreign' and city_info %}
+                <h3 class="section-heading" style="font-size:1rem; margin-bottom:0.75rem;">
+                    <span class="icon" style="background:rgba(99,102,241,0.1);">🌐</span>
+                    City Overview
+                </h3>
+                <div style="display:flex; flex-direction:column; gap:0.5rem;">
+                    <div class="tax-highlight">
+                        <span class="tax-highlight-label">Currency</span>
+                        <span class="tax-highlight-val">{{ city_info.currency }} ({{ city_info.currency_symbol }})</span>
+                    </div>
+                    <div class="tax-highlight">
+                        <span class="tax-highlight-label" data-i18n="exchangeRate">Exchange Rate</span>
+                        <span class="tax-highlight-val">1 {{ city_info.currency }} ≈ ₹{{ city_info.exchange_rate_inr }}</span>
+                    </div>
+                    <div class="tax-highlight">
+                        <span class="tax-highlight-label" data-i18n="avgRent">Avg. 1BR Rent</span>
+                        <span class="tax-highlight-val">{{ city_info.currency_symbol }}{{ city_info.avg_rent_1bhk }}/mo</span>
+                    </div>
+                    <div class="tax-highlight">
+                        <span class="tax-highlight-label" data-i18n="avgGrocery">Avg. Grocery/Month</span>
+                        <span class="tax-highlight-val">{{ city_info.currency_symbol }}{{ city_info.avg_grocery_monthly }}</span>
+                    </div>
+                    <p style="font-size:0.8rem; color:var(--text-muted); margin-top:0.25rem;">{{ city_info.description }}</p>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Right: Weather -->
+            <div>
+                {% if weather.success %}
+                <h3 class="section-heading" style="font-size:1rem; margin-bottom:0.75rem;">
+                    <span class="icon" style="background:rgba(59,130,246,0.1);">🌤️</span>
+                    <span data-i18n="weatherNow">Current Weather</span>
+                </h3>
+                <div class="weather-grid">
+                    <div class="weather-left">
+                        <div class="weather-emoji-big">{{ weather.emoji }}</div>
+                        <div class="weather-temp-big">{{ weather.temp_c }}°C</div>
+                        <div class="weather-desc-big">{{ weather.desc }}</div>
+                    </div>
+                    <div class="weather-stats">
+                        <div class="weather-stat">
+                            <div class="weather-stat-value">{{ weather.feels_like }}°C</div>
+                            <div class="weather-stat-label" data-i18n="feelsLike">Feels Like</div>
+                        </div>
+                        <div class="weather-stat">
+                            <div class="weather-stat-value">{{ weather.humidity }}%</div>
+                            <div class="weather-stat-label" data-i18n="humidity">Humidity</div>
+                        </div>
+                        <div class="weather-stat">
+                            <div class="weather-stat-value">{{ weather.wind_kmph }} km/h</div>
+                            <div class="weather-stat-label" data-i18n="wind">Wind</div>
+                        </div>
+                        <div class="weather-stat">
+                            <div class="weather-stat-value">{{ weather.max_temp }}° / {{ weather.min_temp }}°</div>
+                            <div class="weather-stat-label">H/L Today</div>
+                        </div>
+                    </div>
+                </div>
+                {% else %}
+                <div style="color:var(--text-muted); text-align:center; padding:2rem; background:var(--surface-2); border-radius:var(--radius-sm); border:1px solid var(--border);">
+                    <div style="font-size:2rem; margin-bottom:0.5rem;">🌡️</div>
+                    <div style="font-size:0.85rem;">Weather data not available for this city</div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% else %}
+<!-- No city set — prompt user -->
+<div class="card animate-fade-up" style="margin-bottom:1.5rem; padding:2rem; text-align:center;">
+    <div style="font-size:3rem; margin-bottom:1rem;">📍</div>
+    <h3 style="font-size:1.1rem; font-weight:700; margin-bottom:0.5rem;">Set Your City for Smart Insights</h3>
+    <p style="color:var(--text-muted); font-size:0.9rem; margin-bottom:1.25rem;">Get city-specific HRA rates, tax info, weather and live city photos!</p>
+    <a href="{% url 'planner:profile_setup' %}" class="btn btn-primary" data-i18n="editProfile">Edit Profile →</a>
+</div>
+{% endif %}
+
+<!-- ═══ INCOME TAX INFO (Indian cities) — LIVE DATA ═══ -->
+{% if city_type == 'indian' or city_type == 'unknown' %}
+{% if tax_info %}
+<div class="card animate-fade-up" style="margin-bottom:1.5rem; animation-delay:0.1s;">
+    <div class="card-header">
+        <div>
+            <h3 class="card-title">
+                <span style="margin-right:0.5rem;">📊</span>
+                Income Tax — {{ tax_info.regime }}
+            </h3>
+            <div style="font-size:0.75rem; color:var(--text-muted); margin-top:0.25rem;">
+                FY {{ tax_info.fy }} · AY {{ live_tax_meta.ay }}
+                · Source:
+                <a href="{{ tax_info.source }}" target="_blank" rel="noopener"
+                   style="color:var(--primary); text-decoration:none;">
+                    {{ tax_info.source|truncatechars:40 }}
+                </a>
+            </div>
+        </div>
+        <div style="display:flex; align-items:center; gap:0.75rem;">
+            {% if rates_fetched_at %}
+            <span style="font-size:0.72rem; color:var(--text-muted);">
+                🕐 Updated: {{ rates_fetched_at|slice:":10" }}
+            </span>
+            {% endif %}
+            <!-- Manual Refresh Button -->
+            <form action="{% url 'planner:refresh_rates' %}" method="post" style="display:inline;">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-ghost btn-sm" title="Fetch latest rates from online sources">
+                    🔄 Refresh Rates
+                </button>
+            </form>
+        </div>
+    </div>
+    <div class="card-body">
+
+        <!-- Key Stats Row -->
+        <div class="grid-4" style="margin-bottom:1.25rem;">
+            <div class="stat-card">
+                <div class="stat-value" style="font-size:1.2rem;">₹{{ tax_info.annual_income|floatformat:0 }}</div>
+                <div class="stat-label">Annual Income</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" style="font-size:1.2rem; color:var(--danger);">₹{{ tax_info.monthly_tax|floatformat:0 }}</div>
+                <div class="stat-label">Monthly Tax</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" style="font-size:1.2rem; color:var(--warning);">{{ tax_info.effective_rate }}%</div>
+                <div class="stat-label">Effective Rate</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" style="font-size:1.2rem; color:var(--accent);">₹{{ tax_info.rebate_87a|floatformat:0 }}</div>
+                <div class="stat-label">
+                    87A Rebate
+                    {% if tax_info.rebate_87a_limit == 1200000 %}
+                    <span class="badge badge-success" style="font-size:0.6rem; display:block; margin-top:2px;">Budget 2025</span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Standard Deduction + Cess pills -->
+        <div style="display:flex; gap:0.75rem; flex-wrap:wrap; margin-bottom:1.25rem;">
+            {% if tax_info.std_deduction %}
+            <div class="suggestion-pill" style="flex:1; min-width:200px; padding:0.6rem 1rem;">
+                <strong>📋 Standard Deduction:</strong> ₹{{ tax_info.std_deduction|floatformat:0 }}
+                <span style="color:var(--text-light); font-size:0.75rem;"> (New Regime, Budget 2024)</span>
+            </div>
+            {% endif %}
+            <div class="suggestion-pill" style="flex:1; min-width:200px; padding:0.6rem 1rem;">
+                <strong>🏥 Health & Education Cess:</strong> {{ tax_info.cess_rate }}%
+                <span style="color:var(--text-light); font-size:0.75rem;"> on total tax = ₹{{ tax_info.cess|floatformat:0 }}</span>
+            </div>
+        </div>
+
+        <!-- ── YOUR CURRENT TAX SLAB ─────────────────────────────── -->
+        {% if tax_info.current_slab %}
+        <div style="margin-bottom:1.25rem;">
+            <div style="font-size:0.75rem; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.6px; margin-bottom:0.6rem;">
+                Your Current Tax Slab
+                <span class="badge-live" style="margin-left:0.4rem;">LIVE</span>
+            </div>
+
+            <!-- Hero slab card -->
+            <div style="display:grid; grid-template-columns:auto 1fr auto; gap:1.25rem; align-items:center; background:linear-gradient(135deg, var(--primary-dark, rgba(99,102,241,0.12)), rgba(99,102,241,0.05)); border:2px solid var(--primary); border-radius:var(--radius-sm); padding:1.25rem 1.5rem;">
+                <!-- Slab rate (big) -->
+                <div style="text-align:center;">
+                    <div style="font-size:2.8rem; font-weight:900; color:var(--primary); line-height:1;">
+                        {{ tax_info.current_slab.rate }}%
+                    </div>
+                    <div style="font-size:0.7rem; color:var(--text-muted); margin-top:0.2rem; text-transform:uppercase; letter-spacing:0.4px;">Marginal Rate</div>
+                </div>
+
+                <!-- Divider -->
+                <div style="height:60px; width:1px; background:var(--border);"></div>
+
+                <!-- Income range + FY -->
+                <div style="flex:1;">
+                    <div style="font-size:1rem; font-weight:700; color:var(--text); margin-bottom:0.3rem;">{{ tax_info.current_slab.label }}</div>
+                    <div style="font-size:0.82rem; color:var(--text-muted);">
+                        FY {{ tax_info.fy }} &nbsp;·&nbsp; New Regime
+                        {% if tax_info.current_slab.rate == 0 %}
+                        &nbsp;·&nbsp; <span style="color:var(--accent); font-weight:600;">✓ Zero tax on this portion</span>
+                        {% endif %}
+                    </div>
+                    <div style="font-size:0.78rem; color:var(--text-light); margin-top:0.4rem;">
+                        After ₹{{ tax_info.std_deduction|floatformat:0 }} std. deduction · Taxable income: ₹{{ tax_info.taxable_income|floatformat:0 }}
+                    </div>
+                </div>
+
+                <!-- Annual tax paid -->
+                <div style="text-align:right;">
+                    <div style="font-size:0.7rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.4px; margin-bottom:0.2rem;">Annual Tax</div>
+                    <div style="font-size:1.5rem; font-weight:800; color:{% if tax_info.annual_tax == 0 %}var(--accent){% else %}var(--danger){% endif %};">
+                        ₹{{ tax_info.annual_tax|floatformat:0 }}
+                    </div>
+                    <div style="font-size:0.75rem; color:var(--text-muted);">incl. {{ tax_info.cess_rate }}% cess</div>
+                </div>
+            </div>
+
+            <!-- Zero-tax badge for income ≤ rebate limit -->
+            {% if tax_info.rebate_87a > 0 and tax_info.annual_tax == 0 %}
+            <div style="margin-top:0.75rem; background:rgba(16,185,129,0.08); border:1px solid rgba(16,185,129,0.3); border-radius:var(--radius-sm); padding:0.75rem 1rem; display:flex; align-items:center; gap:0.75rem;">
+                <span style="font-size:1.4rem;">🎉</span>
+                <div>
+                    <div style="font-size:0.88rem; font-weight:700; color:var(--accent);">Zero tax payable (Section 87A rebate applied)</div>
+                    <div style="font-size:0.78rem; color:var(--text-muted); margin-top:0.15rem;">
+                        Rebate of ₹{{ tax_info.rebate_87a|floatformat:0 }} covers your full tax liability. Income ≤ ₹{{ tax_info.rebate_87a_limit|floatformat:0 }} qualifies. Budget 2025.
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+        {% endif %}
+
+        <!-- ── SLAB-WISE BREAKDOWN (only slabs where tax > 0) ────── -->
+        {% if tax_info.breakdown %}
+        <div style="margin-bottom:1.25rem;">
+            <div style="font-size:0.75rem; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.6px; margin-bottom:0.6rem;">How Your Tax Is Calculated</div>
+            {% for b in tax_info.breakdown %}
+            <div style="display:flex; justify-content:space-between; align-items:center; padding:0.55rem 0.9rem; background:var(--surface-2); border:1px solid var(--border); border-radius:var(--radius-sm); margin-bottom:0.35rem;">
+                <div style="font-size:0.83rem; color:var(--text);">{{ b.label }}</div>
+                <div style="display:flex; align-items:center; gap:1rem;">
+                    <span class="tax-rate-badge">{{ b.rate }}%</span>
+                    <span style="font-size:0.88rem; font-weight:700; color:var(--danger); min-width:80px; text-align:right;">₹{{ b.tax|floatformat:0 }}</span>
+                </div>
+            </div>
+            {% endfor %}
+            <!-- Totals row -->
+            <div style="display:flex; justify-content:space-between; align-items:center; padding:0.65rem 0.9rem; background:var(--surface); border:2px solid var(--border); border-radius:var(--radius-sm); margin-top:0.25rem;">
+                <div style="font-size:0.83rem; font-weight:700; color:var(--text);">
+                    Total &nbsp;+&nbsp; {{ tax_info.cess_rate }}% Cess (₹{{ tax_info.cess|floatformat:0 }})
+                    {% if tax_info.rebate_87a > 0 %}&nbsp;– &nbsp;87A Rebate (₹{{ tax_info.rebate_87a|floatformat:0 }}){% endif %}
+                </div>
+                <div style="font-size:1rem; font-weight:800; color:{% if tax_info.annual_tax == 0 %}var(--accent){% else %}var(--danger){% endif %};">
+                    ₹{{ tax_info.annual_tax|floatformat:0 }}/yr
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- ── ALL SLABS REFERENCE (collapsible) ─────────────────── -->
+        <details>
+            <summary style="cursor:pointer; font-size:0.82rem; font-weight:600; color:var(--text-muted); padding:0.4rem 0; user-select:none; list-style:none; display:flex; align-items:center; gap:0.4rem;">
+                <span style="transition:transform 0.2s;" class="details-arrow">▶</span>
+                All Slabs — New Regime FY {{ tax_info.fy }}
+                <span class="badge-live" style="margin-left:0.3rem;">LIVE</span>
+            </summary>
+            <div style="margin-top:0.6rem; overflow-x:auto;">
+                <table class="tax-table">
+                    <thead>
+                        <tr><th>Income Range</th><th>Rate</th><th>Tax Paid</th></tr>
+                    </thead>
+                    <tbody>
+                        {% for slab in new_regime_slabs %}
+                        <tr {% if tax_info.current_slab and slab.label == tax_info.current_slab.label %}style="background:rgba(99,102,241,0.08); font-weight:600;"{% endif %}>
+                            <td>
+                                {{ slab.label }}
+                                {% if tax_info.current_slab and slab.label == tax_info.current_slab.label %}
+                                <span style="font-size:0.65rem; color:var(--primary); margin-left:0.4rem;">← your income</span>
+                                {% endif %}
+                            </td>
+                            <td><span class="tax-rate-badge">{{ slab.rate }}%</span></td>
+                            <td style="color:var(--text-muted); font-size:0.82rem;">
+                                {% for b in tax_info.breakdown %}{% if b.label == slab.label %}₹{{ b.tax|floatformat:0 }}{% endif %}{% endfor %}
+                                {% if slab.rate == 0 %}—{% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </details>
+
+        <!-- Budget 2025 Key Change callout -->
+        {% if live_tax_meta.rebate_87a_limit == 1200000 %}
+        <div style="margin-top:1rem; background:linear-gradient(135deg,rgba(16,185,129,0.08),rgba(99,102,241,0.05)); border:1px solid rgba(16,185,129,0.25); border-radius:var(--radius-sm); padding:1rem;">
+            <div style="font-size:0.85rem; font-weight:700; color:var(--accent); margin-bottom:0.3rem;">🎉 Budget 2025 Key Change</div>
+            <p style="font-size:0.82rem; color:var(--text-muted); line-height:1.6;">
+                Section 87A rebate raised to <strong>₹60,000</strong> — effectively <strong>zero tax on income up to ₹12 lakh</strong> under the new regime.
+                Standard deduction of <strong>₹75,000</strong> also available. Announced 1 Feb 2025.
+            </p>
+        </div>
+        {% endif %}
+
+        <!-- Old Regime Toggle -->
+        <details style="margin-top:1rem;">
+            <summary style="cursor:pointer; font-size:0.85rem; font-weight:600; color:var(--text-muted); padding:0.5rem 0; user-select:none;">
+                📖 View Old Regime Slabs (FY {{ old_regime_meta.fy }})
+            </summary>
+            <div style="margin-top:0.75rem; overflow-x:auto;">
+                <table class="tax-table">
+                    <thead><tr><th>Income Range</th><th>Rate</th><th>Notes</th></tr></thead>
+                    <tbody>
+                        {% for slab in old_regime_slabs %}
+                        <tr>
+                            <td>{{ slab.label }}</td>
+                            <td><span class="tax-rate-badge">{{ slab.rate }}%</span></td>
+                            <td style="color:var(--text-muted); font-size:0.78rem;">
+                                {% if slab.rate == 0 %}Nil{% elif slab.rate == 5 %}87A rebate ≤ ₹5L{% else %}—{% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                <p style="font-size:0.75rem; color:var(--text-light); margin-top:0.6rem;">
+                    Old regime: Deductions via 80C (₹1.5L), 80D (₹25K), HRA, LTA, NPS 80CCD(1B) ₹50K. Best when total deductions &gt; ₹3.75L.
+                </p>
+            </div>
+        </details>
+
+        <p style="font-size:0.72rem; color:var(--text-light); margin-top:0.75rem;">
+            📌 {{ tax_info.note|truncatechars:200 }}
+        </p>
+    </div>
+</div>
+{% endif %}
+{% endif %}
+
+<!-- ═══ FOREIGN TAX INFO ═══ -->
+{% if city_type == 'foreign' and city_info %}
+<div class="card animate-fade-up" style="margin-bottom:1.5rem; animation-delay:0.1s;">
+    <div class="card-header">
+        <h3 class="card-title">🌐 <span data-i18n="foreignTax">Tax System</span> — {{ city_info.country }}</h3>
+        <span class="badge badge-int">International</span>
+    </div>
+    <div class="card-body">
+        <h4 style="font-size:1rem; font-weight:700; color:var(--text); margin-bottom:1rem;">{{ city_info.tax_system.name }}</h4>
+
+        {% if city_info.tax_system.income_tax_rate == 0 %}
+        <div style="background:linear-gradient(135deg,rgba(16,185,129,0.1),rgba(16,185,129,0.05)); border:1px solid rgba(16,185,129,0.3); border-radius:var(--radius-sm); padding:1.25rem; margin-bottom:1rem; text-align:center;">
+            <div style="font-size:2rem; margin-bottom:0.5rem;">🎉</div>
+            <div style="font-size:1.1rem; font-weight:700; color:var(--accent);" data-i18n="noTax">No Personal Income Tax!</div>
+            <p style="color:var(--text-muted); font-size:0.85rem; margin-top:0.5rem;">{{ city_info.tax_system.notes }}</p>
+        </div>
+        {% endif %}
+
+        <!-- Tax brackets if available -->
+        {% if city_info.tax_system.brackets %}
+        <h5 style="font-size:0.8rem; font-weight:600; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:0.75rem;" data-i18n="taxBrackets">Income Tax Brackets</h5>
+        {% for bracket in city_info.tax_system.brackets %}
+        <div class="tax-bracket-row">
+            <span>{{ bracket.label }}</span>
+            <span class="tax-rate-badge">{{ bracket.rate }}%</span>
+        </div>
+        {% endfor %}
+        {% endif %}
+
+        <!-- Federal brackets if available -->
+        {% if city_info.tax_system.federal_brackets %}
+        <h5 style="font-size:0.8rem; font-weight:600; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px; margin:0.75rem 0;" data-i18n="taxBrackets">Federal Tax Brackets</h5>
+        {% for bracket in city_info.tax_system.federal_brackets %}
+        <div class="tax-bracket-row">
+            <span>{% if bracket.up_to %}Up to {{ city_info.currency_symbol }}{{ bracket.up_to|floatformat:0 }}{% else %}Above threshold{% endif %}</span>
+            <span class="tax-rate-badge">{{ bracket.rate }}%</span>
+        </div>
+        {% endfor %}
+        {% endif %}
+
+        <!-- Other rates -->
+        <div class="grid-2" style="margin-top:1rem;">
+            {% if city_info.tax_system.state_tax_rate %}
+            <div class="tax-highlight">
+                <span class="tax-highlight-label">State/Provincial Tax</span>
+                <span class="tax-highlight-val">{{ city_info.tax_system.state_tax_rate }}%</span>
+            </div>
+            {% endif %}
+            {% if city_info.tax_system.vat %}
+            <div class="tax-highlight">
+                <span class="tax-highlight-label" data-i18n="vatRate">VAT / Sales Tax</span>
+                <span class="tax-highlight-val">{{ city_info.tax_system.vat }}%</span>
+            </div>
+            {% endif %}
+            {% if city_info.tax_system.sales_tax %}
+            <div class="tax-highlight">
+                <span class="tax-highlight-label">Sales Tax</span>
+                <span class="tax-highlight-val">{{ city_info.tax_system.sales_tax }}%</span>
+            </div>
+            {% endif %}
+            {% if city_info.tax_system.social_security %}
+            <div class="tax-highlight">
+                <span class="tax-highlight-label" data-i18n="socialSecurity">Social Security</span>
+                <span class="tax-highlight-val">{{ city_info.tax_system.social_security }}%</span>
+            </div>
+            {% endif %}
+            {% if city_info.tax_system.superannuation %}
+            <div class="tax-highlight">
+                <span class="tax-highlight-label">Superannuation</span>
+                <span class="tax-highlight-val">{{ city_info.tax_system.superannuation }}%</span>
+            </div>
+            {% endif %}
+            {% if city_info.tax_system.cpf_employee %}
+            <div class="tax-highlight">
+                <span class="tax-highlight-label">CPF (Retirement)</span>
+                <span class="tax-highlight-val">{{ city_info.tax_system.cpf_employee }}%</span>
+            </div>
+            {% endif %}
+        </div>
+
+        {% if city_info.tax_system.notes %}
+        <div class="suggestion-pill" style="margin-top:1rem;">
+            <strong>📋 Notes:</strong> {{ city_info.tax_system.notes }}
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endif %}
+
+<!-- ═══ MAIN DASHBOARD GRID ═══ -->
+<div class="dashboard-grid">
+
+    <!-- ── LEFT COLUMN ── -->
+    <div class="left-col">
+
+        <!-- Budget Allocation Card -->
+        <div class="card animate-fade-up" style="animation-delay:0.15s;">
+            <div class="card-header">
+                <h2 class="card-title">💰 <span data-i18n="myBudget">My Monthly Budget</span></h2>
+                <div>
+                    <span style="font-size:0.85rem; color:var(--text-muted);" data-i18n="basedOn">Based on your income in</span>
+                    <strong style="color:var(--primary);"> {{ profile.city|title|default:"your city" }}</strong>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="budget-layout">
+                    <div class="chart-wrap">
+                        <canvas id="budgetChart"></canvas>
+                    </div>
+                    <div style="display:flex; flex-direction:column; gap:0.75rem;">
+                        <!-- Needs -->
+                        <div class="alloc-card alloc-needs">
+                            <div style="display:flex; align-items:center; gap:0.75rem;">
+                                <div class="alloc-icon">🏠</div>
+                                <div>
+                                    <div class="alloc-label" data-i18n="needs">Needs</div>
+                                    <div class="alloc-amount">{{ allocations.currency }}{{ allocations.needs }}</div>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Wants -->
+                        <div class="alloc-card alloc-wants">
+                            <div style="display:flex; align-items:center; gap:0.75rem;">
+                                <div class="alloc-icon">🛍️</div>
+                                <div>
+                                    <div class="alloc-label" data-i18n="wants">Wants</div>
+                                    <div class="alloc-amount">{{ allocations.currency }}{{ allocations.wants }}</div>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Savings -->
+                        <div class="alloc-card alloc-savings">
+                            <div style="display:flex; align-items:center; gap:0.75rem;">
+                                <div class="alloc-icon">💎</div>
+                                <div>
+                                    <div class="alloc-label" data-i18n="savings">Savings</div>
+                                    <div class="alloc-amount">{{ allocations.currency }}{{ allocations.savings }}</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="divider"></div>
+                <p style="font-size:0.8rem; color:var(--text-muted);">
+                    💡 Budget based on
+                    {% if city_type == 'indian' and city_info %}
+                        Class {{ city_category }} city rules ({{ hra_percent }}% HRA, {{ city_info.cost_index }} cost index).
+                    {% elif city_type == 'foreign' %}
+                        international cost-of-living index for {{ city_info.country }}.
+                    {% else %}
+                        standard 50/30/20 split.
+                    {% endif %}
+                    Lifestyle: <strong>{{ profile.get_lifestyle_display }}</strong>.
+                </p>
+            </div>
+        </div>
+
+        <!-- Personalized Tips -->
+        <div class="card animate-fade-up" style="animation-delay:0.2s;">
+            <div class="card-header">
+                <h2 class="card-title">💡 <span data-i18n="tips">Personalized Tips</span></h2>
+                <span class="badge badge-success">{{ profile.get_lifestyle_display }}</span>
+            </div>
+            <div class="card-body">
+                <div style="display:flex; flex-direction:column; gap:0.75rem;">
+                    {% for tip in personalized_tips %}
+                    <div class="tip-item">
+                        <div class="tip-icon">✅</div>
+                        <p style="font-size:0.9rem; color:var(--text); line-height:1.6;">{{ tip }}</p>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+    </div><!-- end left-col -->
+
+    <!-- ── RIGHT COLUMN: Savings Goals ── -->
+    <div class="right-col">
+        <div class="card animate-fade-up" style="animation-delay:0.25s;">
+            <div class="card-header">
+                <h2 class="card-title">🎯 <span data-i18n="savingsGoals">Savings Goals</span></h2>
+                <a href="{% url 'planner:create_goal' %}" class="btn btn-accent btn-sm" data-i18n="newGoal">+ New Goal</a>
+            </div>
+            <div class="card-body" style="display:flex; flex-direction:column; gap:1rem;">
+                {% if not has_goals %}
+                <div class="no-city-state">
+                    <span class="no-city-icon">🎯</span>
+                    <p style="font-weight:600; color:var(--text); margin-bottom:0.5rem;" data-i18n="noGoals">No goals yet!</p>
+                    <p style="font-size:0.85rem;" data-i18n="">Set a goal to start your savings journey.</p>
+                    <a href="{% url 'planner:create_goal' %}" class="btn btn-primary" style="margin-top:1rem;" data-i18n="newGoal">+ New Goal</a>
+                </div>
+                {% else %}
+                {% for item in goals_with_suggestions %}
+                <div class="goal-card {% if item.goal.is_achieved %}goal-achieved{% endif %}">
+                    <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:0.75rem;">
+                        <div>
+                            <div class="goal-title">{{ item.goal.title }}</div>
+                            {% if item.goal.is_achieved %}
+                            <span class="badge badge-success" style="margin-top:0.25rem;" data-i18n="achieved">🎉 Achieved!</span>
+                            {% endif %}
+                        </div>
+                        <div class="goal-actions">
+                            <a href="{% url 'planner:edit_goal' item.goal.id %}" class="btn btn-ghost btn-sm" data-i18n="edit">Edit</a>
+                            <form action="{% url 'planner:delete_goal' item.goal.id %}" method="post" style="display:inline;" onsubmit="return confirm(t('deleteConfirm'));">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-danger btn-sm" data-i18n="delete">Delete</button>
+                            </form>
+                        </div>
+                    </div>
+
+                    <!-- Progress -->
+                    <div style="display:flex; justify-content:space-between; font-size:0.8rem; color:var(--text-muted); margin-bottom:0.4rem;">
+                        <span>{{ allocations.currency }}{{ item.goal.current_amount }} <span data-i18n="saved">saved</span></span>
+                        <span>{{ item.goal.progress_percent }}%</span>
+                    </div>
+                    <div class="progress-bar-wrap">
+                        <div class="progress-bar-fill" style="width:{{ item.goal.progress_percent }}%;"></div>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; font-size:0.78rem; color:var(--text-light); margin-top:0.4rem; margin-bottom:0.75rem;">
+                        <span><span data-i18n="target">Target</span>: {{ allocations.currency }}{{ item.goal.target_amount }}</span>
+                        <span>By {{ item.goal.target_date }}</span>
+                    </div>
+
+                    <!-- Monthly needed -->
+                    <div class="tax-highlight" style="margin-bottom:0.75rem;">
+                        <span class="tax-highlight-label" data-i18n="monthlyNeeded">Monthly Needed</span>
+                        <span class="tax-highlight-val" style="font-size:0.95rem;">{{ allocations.currency }}{{ item.goal.monthly_needed }}</span>
+                    </div>
+
+                    <!-- Investment suggestion -->
+                    <div class="suggestion-pill" style="margin-bottom:0.75rem;">
+                        <span style="font-weight:700; color:var(--primary);" data-i18n="suggestion">Suggestion:</span>
+                        {{ item.suggestion }}
+                    </div>
+
+                    <!-- Add funds form -->
+                    {% if not item.goal.is_achieved %}
+                    <form action="{% url 'planner:update_goal_progress' item.goal.id %}" method="post" style="display:flex; gap:0.5rem;">
+                        {% csrf_token %}
+                        <input type="number" name="add_amount"
+                               class="form-input" style="flex:1; padding:0.4rem 0.75rem; font-size:0.9rem;"
+                               placeholder="Add amount..." step="0.01" min="0">
+                        <button type="submit" class="btn btn-primary btn-sm" data-i18n="add">Add</button>
+                    </form>
+                    {% endif %}
+                </div>
+                {% endfor %}
+                {% endif %}
+            </div>
+        </div>
+    </div><!-- end right-col -->
+
+</div><!-- end dashboard-grid -->
+
+{% endblock %}
+
+{% block scripts %}
+{{ chart_data|json_script:"chart-data" }}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+// Budget Doughnut Chart
+const chartData = JSON.parse(document.getElementById('chart-data').textContent);
+const ctx = document.getElementById('budgetChart').getContext('2d');
+
+const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+
+const budgetChart = new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+        labels: chartData.labels,
+        datasets: [{
+            data: chartData.data,
+            backgroundColor: ['rgba(16,185,129,0.8)', 'rgba(245,158,11,0.8)', 'rgba(99,102,241,0.8)'],
+            borderColor: ['#10b981', '#f59e0b', '#6366f1'],
+            borderWidth: 2,
+            hoverOffset: 8,
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        cutout: '68%',
+        plugins: {
+            legend: { display: false },
+            tooltip: {
+                callbacks: {
+                    label: function(ctx) {
+                        const currency = '{{ allocations.currency }}';
+                        return ` ${currency}${ctx.parsed.toLocaleString('en-IN')}`;
+                    }
+                }
+            }
+        }
+    }
+});
+
+// Re-render chart on theme change
+document.querySelectorAll('[data-theme-btn]').forEach(btn => {
+    btn.addEventListener('click', () => {
+        setTimeout(() => { budgetChart.update(); }, 300);
+    });
+});
+</script>
+{% endblock %}
